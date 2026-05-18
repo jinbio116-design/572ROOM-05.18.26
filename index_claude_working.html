@@ -1,0 +1,2527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Room 572 Laboratory Map</title>
+  <style>
+    :root {
+      --bg: #eef2f6;
+      --surface: #ffffff;
+      --surface-2: #f7f9fc;
+      --ink: #1f2937;
+      --muted: #687386;
+      --line: #d9e0ea;
+      --shadow: 0 18px 50px rgba(25, 40, 64, 0.14);
+      --bench: #4f86c6;
+      --cell: #16a085;
+      --wet: #3098dc;
+      --cold: #6c7ae0;
+      --instrument: #c069a8;
+      --chem: #b48b32;
+      --accent: #f5b84b;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.75), rgba(238,242,246,0.65)),
+        radial-gradient(circle at top left, rgba(48,152,220,0.18), transparent 36rem),
+        var(--bg);
+    }
+
+    button,
+    input {
+      font: inherit;
+    }
+
+    .app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      height: 100vh;
+      padding: 18px;
+    }
+
+    .main,
+    .detail-panel {
+      min-height: 0;
+      border: 1px solid rgba(217, 224, 234, 0.8);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .main {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr);
+      overflow: hidden;
+      border-radius: 18px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) minmax(260px, 430px) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.78);
+    }
+
+    .title h1 {
+      margin: 0;
+      font-size: 24px;
+      line-height: 1.05;
+      letter-spacing: 0;
+    }
+
+    .title p {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .search-wrap {
+      position: relative;
+    }
+
+    .search-wrap input {
+      width: 100%;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 72px 0 14px;
+      color: var(--ink);
+      background: var(--surface);
+      outline: none;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .search-wrap input:focus {
+      border-color: #6ba9df;
+      box-shadow: 0 0 0 4px rgba(48, 152, 220, 0.16);
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      translate: 0 -50%;
+      color: #8590a3;
+      font-size: 12px;
+      font-weight: 800;
+      pointer-events: none;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .toolbar-actions button {
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0 12px;
+      color: #2c394b;
+      background: #f9fbfe;
+      cursor: pointer;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .toolbar-actions button:hover {
+      border-color: #9db4d0;
+      background: #eef5fd;
+    }
+
+    .toolbar-actions button.is-unlocked {
+      border-color: rgba(245, 184, 75, 0.72);
+      background: #fff5d9;
+      color: #60420a;
+    }
+
+    .map-shell {
+      position: relative;
+      display: grid;
+      grid-template-columns: 82px minmax(760px, 1fr);
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .legend {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-self: start;
+      position: sticky;
+      left: 0;
+      top: 0;
+      z-index: 4;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.84);
+    }
+
+    .legend-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 8px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 12px rgba(31, 41, 55, 0.12);
+      cursor: pointer;
+    }
+
+    .legend-dot:hover,
+    .legend-dot:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .lab-map {
+      position: relative;
+      width: 1220px;
+      max-width: 100%;
+      min-width: 1220px;
+      height: 740px;
+      margin: 0 auto;
+      border: 1px solid #cdd7e4;
+      border-radius: 22px;
+      background:
+        linear-gradient(90deg, rgba(31,41,55,0.04) 1px, transparent 1px),
+        linear-gradient(rgba(31,41,55,0.04) 1px, transparent 1px),
+        linear-gradient(145deg, #f9fbfe, #e9eff6);
+      background-size: 34px 34px, 34px 34px, auto;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.85), 0 22px 55px rgba(29, 43, 65, 0.16);
+      overflow: auto;
+      transform-style: preserve-3d;
+    }
+
+    .lab-map::before {
+      content: "";
+      position: absolute;
+      inset: 24px;
+      border: 2px solid rgba(127, 143, 166, 0.35);
+      border-radius: 18px;
+      pointer-events: none;
+    }
+
+    .room-label {
+      position: absolute;
+      left: 34px;
+      top: 30px;
+      padding: 6px 10px;
+      border-radius: 10px;
+      color: #4b5668;
+      background: rgba(255,255,255,0.78);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .zone {
+      position: absolute;
+      overflow: visible;
+      resize: none;
+      touch-action: none;
+      border: 1px solid rgba(255, 255, 255, 0.7);
+      border-radius: 18px;
+      padding: 14px;
+      color: #142033;
+      cursor: pointer;
+      touch-action: none;
+      background: color-mix(in srgb, var(--zone-color), white 82%);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.85),
+        inset 0 -12px 22px rgba(19, 34, 54, 0.06),
+        0 18px 28px rgba(31, 41, 55, 0.1);
+      transition: transform 0.18s ease, box-shadow 0.18s ease, outline 0.18s ease;
+    }
+
+    .zone-card {
+      min-width: 180px;
+      min-height: 100px;
+    }
+
+    .zone::after {
+      content: "";
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      bottom: -8px;
+      height: 14px;
+      border-radius: 0 0 18px 18px;
+      background: color-mix(in srgb, var(--zone-color), black 20%);
+      opacity: 0.32;
+      filter: blur(0.2px);
+      z-index: -1;
+    }
+
+    .zone:hover,
+    .zone.active {
+      transform: translateY(-3px);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.9),
+        0 0 0 3px rgba(245, 184, 75, 0.35),
+        0 24px 42px rgba(31, 41, 55, 0.17);
+    }
+
+    .zone.highlight,
+    .equipment.highlight,
+    .zone-item.highlight {
+      outline: 4px solid rgba(245, 184, 75, 0.96);
+      outline-offset: 3px;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(245, 184, 75, 0.34), 0 22px 42px rgba(31, 41, 55, 0.16); }
+      50% { box-shadow: 0 0 0 10px rgba(245, 184, 75, 0), 0 22px 42px rgba(31, 41, 55, 0.16); }
+    }
+
+    .zone-header,
+    .zone-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: move;
+      user-select: none;
+      touch-action: none;
+    }
+
+    .zone-header {
+      position: relative;
+      z-index: 2;
+    }
+
+    body.view-mode .zone-header {
+      cursor: pointer;
+    }
+
+    body.edit-mode .zone-header {
+      cursor: move;
+    }
+
+    .zone-header .zone-title {
+      margin-bottom: 0;
+    }
+
+    .add-item-btn {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      color: #142033;
+      background: rgba(255,255,255,0.76);
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .zone-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .delete-zone-btn {
+      display: grid;
+      place-items: center;
+      width: 24px;
+      height: 24px;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 8px;
+      color: #6b2d2d;
+      background: rgba(255,255,255,0.76);
+      cursor: pointer;
+      font-weight: 900;
+    }
+
+    .delete-zone-btn:hover {
+      background: rgba(239, 68, 68, 0.16);
+      border-color: rgba(185, 28, 28, 0.38);
+    }
+
+    body.view-mode .add-zone-btn,
+    body.view-mode #resetLayoutBtn,
+    body.view-mode #resetPositions,
+    body.view-mode .add-item-btn,
+    body.view-mode .delete-zone-btn,
+    body.view-mode .delete-item-btn,
+    body.view-mode .resize-handle {
+      display: none;
+    }
+
+    .add-item-btn:hover {
+      background: #fff4cf;
+      border-color: var(--accent);
+    }
+
+    .zone.resizing-zone {
+      opacity: 0.88;
+      z-index: 999;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    }
+
+    .zone.moving-zone {
+      opacity: 0.9;
+      z-index: 999;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      cursor: nwse-resize;
+      background: rgba(30, 41, 59, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 4px 10px rgba(31, 41, 55, 0.18);
+      z-index: 1000;
+      pointer-events: auto;
+      touch-action: none;
+    }
+
+    .bench-zone {
+      --zone-color: var(--bench);
+    }
+
+    .cell-zone {
+      --zone-color: var(--cell);
+    }
+
+    .wet-zone {
+      --zone-color: var(--wet);
+    }
+
+    .cold-zone {
+      --zone-color: var(--cold);
+    }
+
+    .instrument-zone {
+      --zone-color: var(--instrument);
+    }
+
+    .chem-zone {
+      --zone-color: var(--chem);
+    }
+
+    .bench-grid {
+      height: 100%;
+    }
+
+    .zone-body {
+      position: relative;
+      display: flex;
+      flex-wrap: wrap;
+      align-content: flex-start;
+      gap: 8px;
+      height: calc(100% - 34px);
+      padding: 4px 22px 22px 0;
+      overflow: auto;
+    }
+
+    .zone-item {
+      position: absolute;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 32px;
+      border: 1px solid rgba(79, 134, 198, 0.36);
+      border-radius: 10px;
+      padding: 6px 8px 6px 10px;
+      color: #173558;
+      background:
+        linear-gradient(150deg, rgba(255,255,255,0.78), rgba(214,232,250,0.68)),
+        repeating-linear-gradient(90deg, transparent 0 16px, rgba(79,134,198,0.08) 16px 18px);
+      font-size: 12px;
+      font-weight: 900;
+      cursor: pointer;
+      user-select: none;
+      touch-action: none;
+      transition: transform 0.16s ease, border 0.16s ease, background 0.16s ease, box-shadow 0.16s ease;
+    }
+
+    body.edit-mode .zone-item {
+      cursor: grab;
+    }
+
+    body.edit-mode .zone-item:active {
+      cursor: grabbing;
+    }
+
+    .zone-item.moving-item {
+      opacity: 0.95;
+      z-index: 999;
+      transition: none;
+      transform: scale(1.05);
+      box-shadow: 0 14px 30px rgba(31, 41, 55, 0.22);
+      will-change: left, top, transform;
+      cursor: grabbing;
+    }
+
+    /* Confirmation modal */
+    .confirm-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: rgba(15, 23, 42, 0.46);
+      backdrop-filter: blur(4px);
+      z-index: 9999;
+      animation: fadeIn 0.15s ease;
+    }
+
+    .confirm-overlay.is-visible {
+      display: flex;
+    }
+
+    .confirm-dialog {
+      width: 100%;
+      max-width: 360px;
+      padding: 22px 22px 18px;
+      border-radius: 16px;
+      background: var(--surface);
+      box-shadow: 0 30px 70px rgba(15, 23, 42, 0.32);
+      animation: popIn 0.18s ease;
+    }
+
+    .confirm-title {
+      margin: 0 0 6px;
+      font-size: 17px;
+      font-weight: 900;
+      color: var(--ink);
+    }
+
+    .confirm-message {
+      margin: 0 0 18px;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--muted);
+    }
+
+    .confirm-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+
+    .confirm-actions button {
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #f9fbfe;
+      color: #2c394b;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .confirm-actions button:hover {
+      border-color: #9db4d0;
+      background: #eef5fd;
+    }
+
+    .confirm-actions button.confirm-danger {
+      color: #fff;
+      background: #d64545;
+      border-color: #b53636;
+    }
+
+    .confirm-actions button.confirm-danger:hover {
+      background: #c53a3a;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(8px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .item-label {
+      max-width: 160px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .item-label[contenteditable="true"] {
+      min-width: 48px;
+      border-radius: 6px;
+      padding: 2px 4px;
+      background: rgba(255,255,255,0.92);
+      outline: 2px solid rgba(245, 184, 75, 0.72);
+    }
+
+    .delete-item-btn {
+      display: grid;
+      place-items: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 6px;
+      color: #6b2d2d;
+      background: rgba(255, 255, 255, 0.72);
+      font-weight: 900;
+    }
+
+    .zone-item:hover,
+    .zone-item.active {
+      transform: translateY(-2px);
+      border-color: var(--accent);
+      background: linear-gradient(150deg, #fff6df, #dceefd);
+    }
+
+    .equipment {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 74px;
+      min-height: 40px;
+      padding: 8px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.78);
+      border-radius: 12px;
+      color: #172033;
+      background: color-mix(in srgb, var(--zone-color), white 76%);
+      box-shadow: 0 12px 24px rgba(31, 41, 55, 0.13), inset 0 1px 0 rgba(255,255,255,0.78);
+      font-size: 12px;
+      font-weight: 850;
+      text-align: center;
+      line-height: 1.15;
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+      z-index: 5;
+      transition: box-shadow 0.14s ease, transform 0.14s ease;
+    }
+
+    .equipment:active,
+    .equipment.dragging {
+      cursor: grabbing;
+      transform: scale(1.04);
+      z-index: 20;
+    }
+
+    .equipment.stack {
+      min-height: 72px;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .equipment.stack small {
+      display: block;
+      color: rgba(23,32,51,0.68);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    .detail-panel {
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      overflow: hidden;
+      border-radius: 18px;
+    }
+
+    .panel-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.1;
+    }
+
+    .panel-body {
+      overflow: auto;
+      padding: 18px 20px;
+      background: var(--surface-2);
+    }
+
+    .section-card {
+      margin-bottom: 14px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+      overflow: hidden;
+    }
+
+    .section-card h3 {
+      margin: 0;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 14px;
+      background: #fbfcfe;
+    }
+
+    .section-card ul {
+      margin: 0;
+      padding: 12px 14px 12px 30px;
+      color: #354154;
+      font-size: 14px;
+      line-height: 1.55;
+    }
+
+    .cabinet-grid {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .cabinet-box {
+      border: 1px solid #e1e7f0;
+      border-radius: 12px;
+      padding: 12px;
+      background: #fbfcfe;
+    }
+
+    .cabinet-box strong {
+      display: block;
+      margin-bottom: 7px;
+      font-size: 13px;
+    }
+
+    .cabinet-box p {
+      margin: 0;
+      color: #4a5669;
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .tag-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .tag {
+      padding: 6px 8px;
+      border-radius: 999px;
+      color: #3a4658;
+      background: #edf2f8;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .panel-footer {
+      display: flex;
+      gap: 10px;
+      padding: 14px 20px;
+      border-top: 1px solid var(--line);
+      background: var(--surface);
+    }
+
+    .panel-footer button {
+      flex: 1;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 10px 12px;
+      color: #2c394b;
+      background: #f9fbfe;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .panel-footer button:hover {
+      border-color: #9db4d0;
+      background: #eef5fd;
+    }
+
+    .panel-edit-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 14px;
+      padding: 9px 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f9fbfe;
+      color: #2c394b;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .panel-edit-btn:hover {
+      border-color: #9db4d0;
+      background: #eef5fd;
+    }
+
+    .panel-input,
+    .panel-textarea {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #fff;
+      color: var(--ink);
+      font: inherit;
+      outline: none;
+      transition: border 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .panel-input:focus,
+    .panel-textarea:focus {
+      border-color: #6ba9df;
+      box-shadow: 0 0 0 3px rgba(48, 152, 220, 0.15);
+    }
+
+    .panel-textarea {
+      min-height: 84px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    .panel-section-padded {
+      padding: 12px 14px;
+    }
+
+    .panel-item-list {
+      list-style: none;
+      margin: 0;
+      padding: 8px 14px 4px;
+    }
+
+    .panel-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .panel-item-row .panel-input {
+      flex: 1;
+    }
+
+    .panel-item-delete {
+      flex: 0 0 auto;
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: #6b2d2d;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .panel-item-delete:hover {
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(185, 28, 28, 0.32);
+    }
+
+    .panel-add-btn {
+      margin: 4px 14px 14px;
+      padding: 8px 12px;
+      border: 1px dashed #9db4d0;
+      border-radius: 10px;
+      background: #f5f9fe;
+      color: #2c394b;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .panel-add-btn:hover {
+      border-style: solid;
+      background: #eaf2fc;
+    }
+
+    .panel-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .panel-actions button {
+      flex: 1;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #f9fbfe;
+      color: #2c394b;
+      font-weight: 850;
+      cursor: pointer;
+    }
+
+    .panel-actions button:hover {
+      border-color: #9db4d0;
+      background: #eef5fd;
+    }
+
+    .panel-actions .panel-save-btn {
+      background: #2f7ed8;
+      border-color: #2363ad;
+      color: #fff;
+    }
+
+    .panel-actions .panel-save-btn:hover {
+      background: #2670c5;
+    }
+
+    .toolbar-actions button.is-secondary {
+      background: #ffffff;
+    }
+
+    body.view-mode .toolbar-actions button.edit-only {
+      display: none;
+    }
+
+    body.view-mode .panel-edit-btn,
+    body.view-mode .panel-edit-form {
+      display: none !important;
+    }
+
+    .copy-feedback {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+      z-index: 10000;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, 0.3);
+      animation: toastIn 0.2s ease;
+    }
+
+    @keyframes toastIn {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+
+    .empty-state {
+      padding: 18px;
+      border: 1px dashed #c5d0de;
+      border-radius: 14px;
+      color: var(--muted);
+      background: rgba(255,255,255,0.7);
+      line-height: 1.5;
+    }
+
+    @media (max-width: 1060px) {
+      .app {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .detail-panel {
+        min-height: 520px;
+      }
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        padding: 10px;
+      }
+
+      .topbar {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar-actions {
+        justify-content: stretch;
+      }
+
+      .toolbar-actions button {
+        flex: 1;
+      }
+
+      .map-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .legend {
+        flex-direction: row;
+        margin-bottom: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <main class="main" aria-label="Room 572 interactive laboratory map">
+      <header class="topbar">
+        <div class="title">
+          <h1>Room 572 Laboratory Map</h1>
+          <p>Resize zones, add items, rename labels, and click benches for inventory.</p>
+        </div>
+        <label class="search-wrap">
+          <input id="searchInput" type="search" placeholder="Search items or inventory..." autocomplete="off" />
+          <span class="search-icon">Search</span>
+        </label>
+        <div class="toolbar-actions" aria-label="Layout controls">
+          <button id="editModeBtn" type="button">Edit Mode</button>
+          <button id="addZoneBtn" class="add-zone-btn edit-only" type="button">+ Zone</button>
+          <button id="resetLayoutBtn" class="edit-only" type="button">Reset Layout</button>
+          <button id="copyViewLinkBtn" class="is-secondary" type="button" title="Copy a read-only share link">Copy View Link</button>
+          <button id="copyEditLinkBtn" class="edit-only is-secondary" type="button" title="Copy an edit-mode link">Copy Edit Link</button>
+          <button id="exportJsonBtn" class="edit-only is-secondary" type="button" title="Download current layout as JSON">Export JSON</button>
+          <button id="importJsonBtn" class="edit-only is-secondary" type="button" title="Replace layout from a JSON file">Import JSON</button>
+          <input id="importJsonFile" type="file" accept="application/json,.json" style="display:none" />
+        </div>
+      </header>
+
+      <section class="map-shell">
+        <nav class="legend" id="legend" aria-label="Zone shortcuts"></nav>
+        <div class="lab-map" id="labMap">
+          <div class="room-label">ROOM 572</div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="detail-panel" aria-live="polite">
+      <div class="panel-header">
+        <p class="eyebrow" id="panelType">Selected area</p>
+        <h2 id="panelTitle">BENCH-ZONE</h2>
+      </div>
+      <div class="panel-body" id="panelBody"></div>
+      <div class="panel-footer">
+        <button id="resetPositions" type="button">Reset Layout</button>
+        <button id="clearSearch" type="button">Clear Search</button>
+      </div>
+    </aside>
+  </div>
+
+  <div id="confirmOverlay" class="confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+    <div class="confirm-dialog">
+      <h3 id="confirmTitle" class="confirm-title">Confirm</h3>
+      <p id="confirmMessage" class="confirm-message">Are you sure?</p>
+      <div class="confirm-actions">
+        <button id="confirmCancel" type="button">Cancel</button>
+        <button id="confirmOk" class="confirm-danger" type="button">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /*
+      =====================================================================
+      ROOM 572 LABORATORY MAP
+      ---------------------------------------------------------------------
+      DEPLOYMENT
+        This is a single static HTML file. It can be hosted as-is on any
+        static-site host. No build step or server is required.
+          - GitHub Pages: push this file to a repo and enable Pages.
+          - Netlify:      drag-and-drop deploy, or connect the repo.
+          - Vercel:       import as a static project (no framework preset).
+        Deployment is intentionally NOT automated here — just upload the
+        HTML file to the host of your choice.
+
+      DATA SHARING / PORTABILITY
+        Layout edits are saved to localStorage, which lives only on the
+        current computer + browser. To share an updated layout with other
+        people, choose one of:
+          1. Use the "Export JSON" button to download the current layout,
+             then have collaborators use "Import JSON" to load it.
+          2. Embed the latest JSON directly into this HTML file (replace
+             DEFAULT_LAB_DATA below) before deploying — every new visitor
+             will see the new defaults.
+          3. Connect a shared backend (Google Sheets, Firebase, Supabase,
+             etc.) and read/write `editorData` against it. Not implemented
+             here; would replace loadLabEditorData / saveLabEditorData.
+
+      SHARING LINKS
+        The URL supports ?mode=view (read-only) and ?mode=edit. Public
+        links should use ?mode=view. The toolbar exposes copy buttons.
+
+      EDIT ROOM 572 DATA HERE
+      Add zones, equipment, bench inventory, and notes in this object.
+      The app renders the map and detail panel from this data.
+      =====================================================================
+    */
+    const labData = {
+      zones: {
+        "BENCH-ZONE": {
+          id: "bench-zone",
+          color: "var(--bench)",
+          note: "Central working benches for shared supplies, culture consumables, stationery, and small benchtop tools.",
+          equipment: ["BENCH-A", "BENCH-B", "BENCH-C", "BENCH-D"],
+          benches: {
+            "BENCH-A": {
+              upperCabinet: {
+                Left: ["5mL serological pipette", "25mL serological pipette"],
+                Right: ["culture dish", "cell plate"]
+              },
+              lowerCabinet: {
+                "Drawer A": ["2.0mL cryogenic vial", "cell culture supplies"],
+                "Drawer B": ["amber tube", "small plastic box"],
+                "Drawer C": ["15mL conical tube"]
+              }
+            },
+            "BENCH-B": {
+              upperCabinet: {
+                Left: ["1000uL pipette tips", "200uL pipette tips"],
+                Right: ["10uL pipette tips"]
+              },
+              lowerCabinet: {
+                "Drawer A": ["empty"],
+                "Drawer B": ["empty"],
+                "Drawer C": ["25mL serological pipette"]
+              }
+            },
+            "BENCH-C": {
+              upperCabinet: {
+                Left: ["professor stuff"],
+                Right: ["professor stuff"]
+              },
+              lowerCabinet: {
+                "Drawer A": ["name pen", "scotch tape", "cutter knife", "stationery supplies"],
+                "Drawer B": ["masking tape"],
+                "Drawer C": ["15mL conical tube"]
+              }
+            },
+            "BENCH-D": {
+              upperCabinet: {
+                Left: ["nitrile gloves", "laboratory gloves"],
+                Right: ["1000uL pipette tips", "PCR equipment"]
+              },
+              lowerCabinet: {
+                "Drawer A": ["stapler"],
+                "Drawer B": ["300VA down mini transformer"],
+                "Drawer C": ["plastic wrap roll", "vortex mixer", "mini centrifuge"]
+              }
+            }
+          }
+        },
+        "CELL-ZONE": {
+          id: "cell-zone",
+          color: "var(--cell)",
+          note: "Cell culture area with biosafety cabinets and stacked CO2 incubators.",
+          equipment: ["BSC-A", "BSC-B", "CO2 incubator stack", "Upper CO2 incubator", "Lower CO2 incubator"]
+        },
+        "WET-ZONE": {
+          id: "wet-zone",
+          color: "var(--wet)",
+          note: "Wet processing area for washing, ice access, and sterilization workflow.",
+          equipment: ["Sink", "Ice maker", "Autoclave"]
+        },
+        "COLD-ZONE": {
+          id: "cold-zone",
+          color: "var(--cold)",
+          note: "Cold storage area for refrigerated and frozen materials.",
+          equipment: ["Refrigerator A", "Refrigerator B", "-20 freezer"]
+        },
+        "INSTRUMENT-ZONE": {
+          id: "instrument-zone",
+          color: "var(--instrument)",
+          note: "Shared instruments for amplification, gel documentation, mixing, drying, and water bath work.",
+          equipment: ["qPCR", "Gel Doc", "Shaker", "Dry Oven", "Water Bath"]
+        },
+        "CHEM-ZONE": {
+          id: "chem-zone",
+          color: "var(--chem)",
+          note: "Future placeholder for chemical handling and storage.",
+          equipment: ["Future fume hood", "Chemical storage placeholder"]
+        }
+      },
+
+      /*
+        LEGACY EQUIPMENT DATA
+        Kept for reference and future map upgrades. The current simple editor renders
+        editable zone items from DEFAULT_LAB_DATA below instead of draggable equipment.
+      */
+      equipmentBlocks: [
+        { id: "bsc-a", label: "BSC-A", zone: "CELL-ZONE", x: 8, y: 30 },
+        { id: "bsc-b", label: "BSC-B", zone: "CELL-ZONE", x: 48, y: 30 },
+        { id: "co2-stack", label: "CO2 incubator stack", sublabel: "Upper / Lower", zone: "CELL-ZONE", x: 26, y: 58, stack: true },
+        { id: "sink", label: "Sink", zone: "WET-ZONE", x: 8, y: 28 },
+        { id: "ice-maker", label: "Ice maker", zone: "WET-ZONE", x: 48, y: 28 },
+        { id: "autoclave", label: "Autoclave", zone: "WET-ZONE", x: 29, y: 63 },
+        { id: "fridge-a", label: "Refrigerator A", zone: "COLD-ZONE", x: 8, y: 30 },
+        { id: "fridge-b", label: "Refrigerator B", zone: "COLD-ZONE", x: 47, y: 30 },
+        { id: "freezer-20", label: "-20 freezer", zone: "COLD-ZONE", x: 28, y: 64 },
+        { id: "qpcr", label: "qPCR", zone: "INSTRUMENT-ZONE", x: 8, y: 26 },
+        { id: "gel-doc", label: "Gel Doc", zone: "INSTRUMENT-ZONE", x: 47, y: 26 },
+        { id: "shaker", label: "Shaker", zone: "INSTRUMENT-ZONE", x: 8, y: 53 },
+        { id: "dry-oven", label: "Dry Oven", zone: "INSTRUMENT-ZONE", x: 47, y: 53 },
+        { id: "water-bath", label: "Water Bath", zone: "INSTRUMENT-ZONE", x: 28, y: 79 },
+        { id: "fume-hood", label: "Future fume hood", zone: "CHEM-ZONE", x: 10, y: 48 },
+        { id: "chemical-storage", label: "Chemical storage", zone: "CHEM-ZONE", x: 54, y: 48 }
+      ]
+    };
+
+    /*
+      EDIT DEFAULT LAB EDITOR DATA HERE
+      Each zone stores x, y, width, height, and item labels in one object.
+      Reset Layout restores this entire object.
+    */
+    const LAB_EDITOR_KEY = "room572-lab-editor";
+    const DEFAULT_LAB_DATA = {
+      zones: {
+        "CHEM-ZONE": {
+          x: 40, y: 40, width: 290, height: 130,
+          title: "CHEM-ZONE",
+          note: "Future placeholder for chemical handling and storage.",
+          items: ["Future fume hood", "Chemical storage"]
+        },
+        "CELL-ZONE": {
+          x: 40, y: 190, width: 290, height: 260,
+          title: "CELL-ZONE",
+          note: "Cell culture area with biosafety cabinets and stacked CO2 incubators.",
+          items: ["BSC-A", "BSC-B", "CO2 incubator stack"]
+        },
+        "BENCH-ZONE": {
+          x: 370, y: 250, width: 520, height: 230,
+          title: "BENCH-ZONE",
+          note: "Central working benches for shared supplies, culture consumables, stationery, and small benchtop tools.",
+          items: ["BENCH-A", "BENCH-B", "BENCH-C", "BENCH-D"]
+        },
+        "WET-ZONE": {
+          x: 370, y: 510, width: 520, height: 190,
+          title: "WET-ZONE",
+          note: "Wet processing area for washing, ice access, and sterilization workflow.",
+          items: ["Sink", "Ice maker", "Autoclave"]
+        },
+        "COLD-ZONE": {
+          x: 880, y: 430, width: 300, height: 210,
+          title: "COLD-ZONE",
+          note: "Cold storage area for refrigerated and frozen materials.",
+          items: ["Refrigerator A", "Refrigerator B", "-20 freezer"]
+        },
+        "INSTRUMENT-ZONE": {
+          x: 880, y: 70, width: 300, height: 260,
+          title: "INSTRUMENT-ZONE",
+          note: "Shared instruments for amplification, gel documentation, mixing, drying, and water bath work.",
+          items: ["qPCR", "Gel Doc", "Shaker", "Dry Oven", "Water Bath"]
+        }
+      }
+    };
+
+    const map = document.getElementById("labMap");
+    const legend = document.getElementById("legend");
+    const panelType = document.getElementById("panelType");
+    const panelTitle = document.getElementById("panelTitle");
+    const panelBody = document.getElementById("panelBody");
+    const searchInput = document.getElementById("searchInput");
+    const editModeBtn = document.getElementById("editModeBtn");
+    const addZoneBtn = document.getElementById("addZoneBtn");
+    const resetLayoutBtn = document.getElementById("resetLayoutBtn");
+    const resetPositions = document.getElementById("resetPositions");
+    const clearSearch = document.getElementById("clearSearch");
+    const confirmOverlay = document.getElementById("confirmOverlay");
+    const confirmTitleEl = document.getElementById("confirmTitle");
+    const confirmMessageEl = document.getElementById("confirmMessage");
+    const confirmOkBtn = document.getElementById("confirmOk");
+    const confirmCancelBtn = document.getElementById("confirmCancel");
+
+    function showConfirm({ title = "Confirm", message = "Are you sure?", confirmLabel = "Delete", cancelLabel = "Cancel" } = {}) {
+      return new Promise((resolve) => {
+        confirmTitleEl.textContent = title;
+        confirmMessageEl.textContent = message;
+        confirmOkBtn.textContent = confirmLabel;
+        confirmCancelBtn.textContent = cancelLabel;
+        confirmOverlay.classList.add("is-visible");
+
+        function cleanup(result) {
+          confirmOverlay.classList.remove("is-visible");
+          confirmOkBtn.removeEventListener("click", onOk);
+          confirmCancelBtn.removeEventListener("click", onCancel);
+          confirmOverlay.removeEventListener("click", onBackdrop);
+          document.removeEventListener("keydown", onKey);
+          resolve(result);
+        }
+
+        function onOk() { cleanup(true); }
+        function onCancel() { cleanup(false); }
+        function onBackdrop(event) { if (event.target === confirmOverlay) cleanup(false); }
+        function onKey(event) {
+          if (event.key === "Escape") { event.preventDefault(); cleanup(false); }
+          if (event.key === "Enter") { event.preventDefault(); cleanup(true); }
+        }
+
+        confirmOkBtn.addEventListener("click", onOk);
+        confirmCancelBtn.addEventListener("click", onCancel);
+        confirmOverlay.addEventListener("click", onBackdrop);
+        document.addEventListener("keydown", onKey);
+        confirmCancelBtn.focus();
+      });
+    }
+
+    let selectedKey = "BENCH-ZONE";
+    let selectedBench = null;
+    let selectedItemId = null;
+    let panelEditing = false;
+    let panelDraft = null;
+    let editMode = false;
+    let editorData = loadLabEditorData();
+    let zoneLayout = getZoneLayoutFromEditor();
+    let zoneItems = getZoneItemsFromEditor();
+
+    function readStorage(key) {
+      try {
+        return localStorage.getItem(key);
+      } catch (error) {
+        console.warn("Local storage is unavailable:", error);
+        return null;
+      }
+    }
+
+    function writeStorage(key, value) {
+      try {
+        localStorage.setItem(key, value);
+      } catch (error) {
+        console.warn("Failed to save layout data:", error);
+      }
+    }
+
+    function removeStorage(key) {
+      try {
+        localStorage.removeItem(key);
+      } catch (error) {
+        console.warn("Failed to clear layout data:", error);
+      }
+    }
+
+    function loadLabEditorData() {
+      const saved = readStorage(LAB_EDITOR_KEY);
+      if (!saved) return normalizeEditorData(deepClone(DEFAULT_LAB_DATA));
+
+      try {
+        const parsed = JSON.parse(saved);
+        return normalizeEditorData({
+          zones: parsed.zones || {}
+        });
+      } catch (error) {
+        console.warn("Failed to load saved lab editor data:", error);
+        return normalizeEditorData(deepClone(DEFAULT_LAB_DATA));
+      }
+    }
+
+    function saveLabEditorData() {
+      writeStorage(LAB_EDITOR_KEY, JSON.stringify(editorData));
+    }
+
+    function getZoneLayoutFromEditor() {
+      return Object.fromEntries(
+        Object.entries(editorData.zones).map(([zoneName, zone]) => [
+          zoneName,
+          { x: zone.x, y: zone.y, width: zone.width, height: zone.height }
+        ])
+      );
+    }
+
+    function getZoneItemsFromEditor() {
+      return Object.fromEntries(
+        Object.entries(editorData.zones).map(([zoneName, zone]) => [
+          zoneName,
+          zone.items.map((item, index) => normalizeItem(zoneName, item, index))
+        ])
+      );
+    }
+
+    function syncEditorFromZoneLayout(layout) {
+      Object.entries(layout).forEach(([zoneName, rect]) => {
+        if (!editorData.zones[zoneName]) return;
+        editorData.zones[zoneName] = {
+          ...editorData.zones[zoneName],
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height
+        };
+      });
+      saveLabEditorData();
+    }
+
+    function syncEditorFromZoneItems(items) {
+      Object.entries(items).forEach(([zoneName, zoneItemList]) => {
+        if (!editorData.zones[zoneName]) return;
+        editorData.zones[zoneName].items = zoneItemList.map((item, index) => normalizeItem(zoneName, item, index));
+      });
+      saveLabEditorData();
+    }
+
+    function deepClone(layout) {
+      return JSON.parse(JSON.stringify(layout));
+    }
+
+    function normalizeEditorData(data) {
+      const normalized = deepClone(data);
+      Object.entries(normalized.zones).forEach(([zoneName, zone]) => {
+        if (typeof zone.title !== "string" || !zone.title.trim()) {
+          zone.title = zoneName;
+        }
+        if (typeof zone.note !== "string") {
+          const meta = labData.zones[zoneName];
+          zone.note = meta?.note || "";
+        }
+        zone.items = (zone.items || []).map((item, index) => normalizeItem(zoneName, item, index));
+      });
+      return normalized;
+    }
+
+    function normalizeItem(zoneName, item, index) {
+      if (typeof item === "string") {
+        return {
+          id: labData.zones["BENCH-ZONE"].benches[item] ? item : slugify(`${zoneName}-${item}-${index}`),
+          label: item,
+          x: 14 + (index % 2) * 122,
+          y: 14 + Math.floor(index / 2) * 44
+        };
+      }
+
+      return {
+        id: item.id || slugify(`${zoneName}-${item.label || "item"}-${index}`),
+        label: item.label || "Item",
+        x: Number.isFinite(item.x) ? item.x : 14 + (index % 2) * 122,
+        y: Number.isFinite(item.y) ? item.y : 14 + Math.floor(index / 2) * 44
+      };
+    }
+
+    function render() {
+      renderZones();
+      applyZoneLayout();
+      renderAllZoneItems();
+      renderLegend();
+      setupZoneResize();
+      setupLayoutButtons();
+      // Default to VIEW mode for safety; only switch to EDIT if the URL says so.
+      const initialMode = getModeFromUrl();
+      setEditMode(initialMode === "edit");
+      const firstZone = editorData.zones["BENCH-ZONE"] ? "BENCH-ZONE" : Object.keys(editorData.zones)[0];
+      if (firstZone) showZone(firstZone);
+    }
+
+    function renderZones() {
+      map.querySelectorAll(".zone").forEach((zone) => zone.remove());
+
+      Object.entries(editorData.zones).forEach(([zoneName, zoneData]) => {
+        const zone = getZoneMeta(zoneName);
+        const displayTitle = zoneData.title || zoneName;
+        const zoneEl = document.createElement("section");
+        zoneEl.id = zoneName;
+        zoneEl.className = `zone zone-card ${zone.id}`;
+        zoneEl.dataset.zone = zoneName;
+        zoneEl.dataset.zoneId = zoneName;
+        zoneEl.style.setProperty("--zone-color", zone.color);
+        zoneEl.innerHTML = `
+          <div class="zone-header">
+            <span class="zone-title">${escapeHtml(displayTitle)}</span>
+            <span class="zone-controls">
+              <button class="add-item-btn" type="button" aria-label="Add item to ${escapeHtml(displayTitle)}">+</button>
+              <button class="delete-zone-btn" type="button" aria-label="Delete ${escapeHtml(displayTitle)}">-</button>
+            </span>
+          </div>
+          <div class="zone-body"></div>
+          <div class="resize-handle" aria-hidden="true"></div>
+        `;
+        zoneEl.addEventListener("click", (event) => {
+          if (zoneEl.dataset.moved === "true") {
+            zoneEl.dataset.moved = "false";
+            return;
+          }
+          if (zoneEl.dataset.resized === "true") {
+            zoneEl.dataset.resized = "false";
+            return;
+          }
+          if (event.target.closest(".add-item-btn, .zone-item, .resize-handle")) return;
+          showZone(zoneName);
+        });
+        map.appendChild(zoneEl);
+      });
+    }
+
+    function getZoneMeta(zoneName) {
+      return labData.zones[zoneName] || {
+        id: `custom-zone-${slugify(zoneName)}`,
+        color: "var(--bench)",
+        note: "Custom editable zone.",
+        equipment: []
+      };
+    }
+
+    function renderLegend() {
+      legend.innerHTML = "";
+      Object.keys(editorData.zones).forEach((zoneName) => {
+        const zone = getZoneMeta(zoneName);
+        const button = document.createElement("button");
+        button.className = "legend-dot";
+        button.type = "button";
+        button.title = zoneName;
+        button.style.background = zone.color;
+        button.addEventListener("click", () => showZone(zoneName));
+        legend.appendChild(button);
+      });
+    }
+
+    function applyZoneLayout() {
+      zoneLayout = getZoneLayoutFromEditor();
+
+      document.querySelectorAll(".zone").forEach((zone) => {
+        const zoneId = zone.dataset.zoneId || zone.id;
+        if (!zoneId || !zoneLayout[zoneId]) return;
+
+        zone.style.left = `${zoneLayout[zoneId].x}px`;
+        zone.style.top = `${zoneLayout[zoneId].y}px`;
+        zone.style.width = `${zoneLayout[zoneId].width}px`;
+        zone.style.height = `${zoneLayout[zoneId].height}px`;
+      });
+    }
+
+    function renderAllZoneItems() {
+      Object.keys(editorData.zones).forEach((zoneName) => renderZoneItems(zoneName));
+    }
+
+    function renderZoneItems(zoneName) {
+      const zone = document.querySelector(`[data-zone-id="${zoneName}"]`);
+      const body = zone?.querySelector(".zone-body");
+      if (!body) return;
+
+      body.innerHTML = "";
+      (zoneItems[zoneName] || []).forEach((item) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "zone-item";
+        button.dataset.itemId = item.id;
+        button.dataset.zone = zoneName;
+        button.style.left = `${item.x}px`;
+        button.style.top = `${item.y}px`;
+        if (labData.zones["BENCH-ZONE"].benches[item.label]) {
+          button.dataset.bench = item.label;
+        }
+        button.innerHTML = `
+          <span class="item-label">${escapeHtml(item.label)}</span>
+          <span class="delete-item-btn" title="Delete item">-</span>
+        `;
+
+        button.addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (button.dataset.moved === "true") {
+            button.dataset.moved = "false";
+            return;
+          }
+          if (event.target.closest(".delete-item-btn")) return;
+          if (labData.zones["BENCH-ZONE"].benches[item.label]) {
+            showBench(item.label);
+          } else {
+            showItemDetail(zoneName, item);
+          }
+        });
+
+        button.querySelector(".delete-item-btn").addEventListener("click", (event) => {
+          event.stopPropagation();
+          if (!editMode) return;
+          deleteZoneItem(zoneName, item.id);
+        });
+
+        button.querySelector(".item-label").addEventListener("dblclick", (event) => {
+          event.stopPropagation();
+          if (!editMode) return;
+          startEditingItemLabel(zoneName, item.id, event.currentTarget);
+        });
+
+        setupItemMove(button, zoneName, item.id);
+        body.appendChild(button);
+      });
+    }
+
+    function setupItemMove(button, zoneName, itemId) {
+      button.addEventListener("pointerdown", (event) => {
+        if (!editMode) return;
+        if (event.button !== 0) return;
+        if (event.target.closest(".delete-item-btn")) return;
+        if (event.target.closest(".item-label") && button.querySelector(".item-label").isContentEditable) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        const body = button.closest(".zone-body");
+        if (!body) return;
+
+        const bodyRect = body.getBoundingClientRect();
+        const itemRect = button.getBoundingClientRect();
+        const offsetX = event.clientX - itemRect.left;
+        const offsetY = event.clientY - itemRect.top;
+        const startClientX = event.clientX;
+        const startClientY = event.clientY;
+        let moved = false;
+        let pendingFrame = null;
+        let nextX = parseInt(button.style.left, 10) || 0;
+        let nextY = parseInt(button.style.top, 10) || 0;
+
+        button.classList.add("moving-item");
+        try { button.setPointerCapture(event.pointerId); } catch (_) {}
+
+        function applyPosition() {
+          pendingFrame = null;
+          button.style.left = `${nextX}px`;
+          button.style.top = `${nextY}px`;
+        }
+
+        function onPointerMove(moveEvent) {
+          const maxX = Math.max(0, body.clientWidth - button.offsetWidth);
+          const maxY = Math.max(0, body.clientHeight - button.offsetHeight);
+          nextX = clamp(moveEvent.clientX - bodyRect.left - offsetX + body.scrollLeft, 0, maxX);
+          nextY = clamp(moveEvent.clientY - bodyRect.top - offsetY + body.scrollTop, 0, maxY);
+
+          if (!moved && (Math.abs(moveEvent.clientX - startClientX) > 3 || Math.abs(moveEvent.clientY - startClientY) > 3)) {
+            moved = true;
+          }
+
+          if (pendingFrame == null) {
+            pendingFrame = requestAnimationFrame(applyPosition);
+          }
+        }
+
+        function onPointerUp(upEvent) {
+          if (pendingFrame != null) {
+            cancelAnimationFrame(pendingFrame);
+            applyPosition();
+          }
+
+          const item = (zoneItems[zoneName] || []).find((candidate) => candidate.id === itemId);
+          if (item) {
+            item.x = parseInt(button.style.left, 10) || 0;
+            item.y = parseInt(button.style.top, 10) || 0;
+            syncEditorFromZoneItems(zoneItems);
+          }
+          button.dataset.moved = moved ? "true" : "false";
+          button.classList.remove("moving-item");
+
+          try {
+            if (button.hasPointerCapture(upEvent.pointerId)) {
+              button.releasePointerCapture(upEvent.pointerId);
+            }
+          } catch (_) {}
+
+          button.removeEventListener("pointermove", onPointerMove);
+          button.removeEventListener("pointerup", onPointerUp);
+          button.removeEventListener("pointercancel", onPointerUp);
+        }
+
+        button.addEventListener("pointermove", onPointerMove);
+        button.addEventListener("pointerup", onPointerUp);
+        button.addEventListener("pointercancel", onPointerUp);
+      });
+    }
+
+    function setupZoneResize() {
+      document.querySelectorAll(".zone").forEach((zone) => {
+        const zoneId = zone.dataset.zoneId || zone.id;
+        const header = zone.querySelector(".zone-header");
+        let handle = zone.querySelector(".resize-handle");
+
+        if (!zoneId) return;
+
+        zone.style.position = "absolute";
+
+        if (!handle) {
+          handle = document.createElement("div");
+          handle.className = "resize-handle";
+          zone.appendChild(handle);
+        }
+
+        header.addEventListener("mousedown", (event) => {
+          if (!editMode) return;
+          if (event.target.closest(".add-item-btn")) return;
+          if (event.target.closest(".delete-zone-btn")) return;
+          if (event.button !== 0) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          const mapRect = map.getBoundingClientRect();
+          const zoneRect = zone.getBoundingClientRect();
+          const offsetX = event.clientX - zoneRect.left;
+          const offsetY = event.clientY - zoneRect.top;
+          let moved = false;
+
+          zone.classList.add("moving-zone");
+
+          function onMouseMove(moveEvent) {
+            const x = moveEvent.clientX - mapRect.left - offsetX + map.scrollLeft;
+            const y = moveEvent.clientY - mapRect.top - offsetY + map.scrollTop;
+
+            zone.style.left = `${x}px`;
+            zone.style.top = `${y}px`;
+            moved = moved || Math.abs(moveEvent.clientX - event.clientX) > 3 || Math.abs(moveEvent.clientY - event.clientY) > 3;
+          }
+
+          function onMouseUp() {
+            const layout = getZoneLayoutFromEditor();
+            layout[zoneId] = {
+              x: parseInt(zone.style.left, 10) || 0,
+              y: parseInt(zone.style.top, 10) || 0,
+              width: zone.offsetWidth,
+              height: zone.offsetHeight
+            };
+            syncEditorFromZoneLayout(layout);
+            zoneLayout = layout;
+
+            zone.dataset.moved = moved ? "true" : "false";
+            zone.classList.remove("moving-zone");
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+          }
+
+          document.addEventListener("mousemove", onMouseMove);
+          document.addEventListener("mouseup", onMouseUp);
+        });
+
+        handle.addEventListener("pointerdown", (event) => {
+          if (!editMode) return;
+          if (event.button !== 0) return;
+
+          event.preventDefault();
+          event.stopPropagation();
+
+          const startX = event.clientX;
+          const startY = event.clientY;
+          const startWidth = zone.offsetWidth;
+          const startHeight = zone.offsetHeight;
+          let resized = false;
+
+          zone.classList.add("resizing-zone");
+          zone.dataset.resized = "false";
+          handle.setPointerCapture(event.pointerId);
+
+          function onPointerMove(moveEvent) {
+            const width = Math.max(220, startWidth + moveEvent.clientX - startX);
+            const height = Math.max(120, startHeight + moveEvent.clientY - startY);
+
+            zone.style.width = `${width}px`;
+            zone.style.height = `${height}px`;
+            resized = resized || Math.abs(moveEvent.clientX - startX) > 3 || Math.abs(moveEvent.clientY - startY) > 3;
+          }
+
+          function onPointerUp(upEvent) {
+            if (handle.hasPointerCapture(upEvent.pointerId)) {
+              handle.releasePointerCapture(upEvent.pointerId);
+            }
+
+            const layout = getZoneLayoutFromEditor();
+            layout[zoneId] = {
+              x: parseInt(zone.style.left, 10) || 0,
+              y: parseInt(zone.style.top, 10) || 0,
+              width: zone.offsetWidth,
+              height: zone.offsetHeight
+            };
+            syncEditorFromZoneLayout(layout);
+            zoneLayout = layout;
+
+            zone.dataset.resized = resized ? "true" : "false";
+            zone.classList.remove("resizing-zone");
+            handle.removeEventListener("pointermove", onPointerMove);
+            handle.removeEventListener("pointerup", onPointerUp);
+            handle.removeEventListener("pointercancel", onPointerUp);
+          }
+
+          handle.addEventListener("pointermove", onPointerMove);
+          handle.addEventListener("pointerup", onPointerUp);
+          handle.addEventListener("pointercancel", onPointerUp);
+        });
+      });
+    }
+
+    function setupLayoutButtons() {
+      editModeBtn?.addEventListener("click", () => setEditMode(!editMode));
+      addZoneBtn?.addEventListener("click", addZone);
+      resetLayoutBtn?.addEventListener("click", resetLayoutToDefaults);
+      resetPositions?.addEventListener("click", resetLayoutToDefaults);
+
+      const copyViewLinkBtn = document.getElementById("copyViewLinkBtn");
+      const copyEditLinkBtn = document.getElementById("copyEditLinkBtn");
+      const exportJsonBtn = document.getElementById("exportJsonBtn");
+      const importJsonBtn = document.getElementById("importJsonBtn");
+      const importJsonFile = document.getElementById("importJsonFile");
+
+      copyViewLinkBtn?.addEventListener("click", () => copyShareLink("view"));
+      copyEditLinkBtn?.addEventListener("click", () => copyShareLink("edit"));
+      exportJsonBtn?.addEventListener("click", exportLabJson);
+      importJsonBtn?.addEventListener("click", () => {
+        if (!editMode) return;
+        importJsonFile.click();
+      });
+      importJsonFile?.addEventListener("change", handleImportJsonFile);
+    }
+
+    function buildShareLink(mode) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("mode", mode);
+      return url.toString();
+    }
+
+    async function copyShareLink(mode) {
+      const link = buildShareLink(mode);
+      const ok = await copyTextToClipboard(link);
+      const label = mode === "edit" ? "Edit link copied" : "View link copied";
+      showToast(ok ? label : `Copy failed — link: ${link}`);
+    }
+
+    async function copyTextToClipboard(text) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_) {
+        try {
+          const textarea = document.createElement("textarea");
+          textarea.value = text;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.opacity = "0";
+          document.body.appendChild(textarea);
+          textarea.select();
+          const ok = document.execCommand("copy");
+          document.body.removeChild(textarea);
+          return ok;
+        } catch (_) {
+          return false;
+        }
+      }
+    }
+
+    let toastTimer = null;
+    function showToast(message) {
+      const existing = document.querySelector(".copy-feedback");
+      if (existing) existing.remove();
+      const toast = document.createElement("div");
+      toast.className = "copy-feedback";
+      toast.textContent = message;
+      document.body.appendChild(toast);
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toast.remove(), 1800);
+    }
+
+    function exportLabJson() {
+      if (!editMode) return;
+      try {
+        const payload = {
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          zones: editorData.zones
+        };
+        const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `room572-lab-${new Date().toISOString().slice(0, 10)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        showToast("Layout exported");
+      } catch (error) {
+        console.warn("Export failed:", error);
+        alert("Failed to export layout.");
+      }
+    }
+
+    async function handleImportJsonFile(event) {
+      const input = event.target;
+      const file = input.files?.[0];
+      input.value = "";
+      if (!file) return;
+      if (!editMode) return;
+
+      const ok = await showConfirm({
+        title: "Replace layout?",
+        message: "Importing will replace the current layout. Continue?",
+        confirmLabel: "Import"
+      });
+      if (!ok) return;
+
+      try {
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        const zones = parsed?.zones && typeof parsed.zones === "object" ? parsed.zones : null;
+        if (!zones || !Object.keys(zones).length) {
+          alert("Invalid layout file — no zones found.");
+          return;
+        }
+        editorData = normalizeEditorData({ zones });
+        saveLabEditorData();
+        if (!editorData.zones[selectedKey]) {
+          selectedKey = Object.keys(editorData.zones)[0] || "";
+        }
+        selectedBench = null;
+        selectedItemId = null;
+        panelEditing = false;
+        panelDraft = null;
+        zoneLayout = getZoneLayoutFromEditor();
+        zoneItems = getZoneItemsFromEditor();
+        rerenderEditor();
+        if (selectedKey) showZone(selectedKey);
+        showToast("Layout imported");
+      } catch (error) {
+        console.warn("Import failed:", error);
+        alert("Failed to import: " + (error?.message || "invalid JSON"));
+      }
+    }
+
+    function getModeFromUrl() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const mode = (params.get("mode") || "").toLowerCase();
+        if (mode === "edit") return "edit";
+        return "view";
+      } catch (_) {
+        return "view";
+      }
+    }
+
+    function setEditMode(enabled) {
+      const previousEditMode = editMode;
+      editMode = enabled;
+      document.body.classList.toggle("edit-mode", editMode);
+      document.body.classList.toggle("view-mode", !editMode);
+      if (editModeBtn) editModeBtn.textContent = editMode ? "View Mode" : "Edit Mode";
+
+      // Leaving edit mode discards any in-progress panel edits.
+      if (!editMode && (panelEditing || panelDraft)) {
+        panelEditing = false;
+        panelDraft = null;
+      }
+
+      // When the mode actually changes (not the initial render bootstrapping),
+      // re-render the panel so edit affordances appear or disappear.
+      if (previousEditMode !== editMode && selectedKey) {
+        if (selectedBench) {
+          showBench(selectedBench);
+        } else if (selectedItemId) {
+          const item = (zoneItems[selectedKey] || []).find((entry) => entry.id === selectedItemId);
+          if (item) showItemDetail(selectedKey, item);
+          else renderPanel();
+        } else {
+          renderPanel();
+        }
+      }
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function showZone(zoneName) {
+      selectedKey = zoneName;
+      selectedBench = null;
+      selectedItemId = null;
+      panelEditing = false;
+      panelDraft = null;
+      setActive(zoneName);
+      renderPanel();
+    }
+
+    function getZoneTitle(zoneName) {
+      return editorData.zones[zoneName]?.title || zoneName;
+    }
+
+    function getZoneNote(zoneName) {
+      const stored = editorData.zones[zoneName]?.note;
+      if (typeof stored === "string") return stored;
+      return getZoneMeta(zoneName).note || "";
+    }
+
+    function renderPanel() {
+      if (!selectedKey || !editorData.zones[selectedKey]) {
+        panelType.textContent = "";
+        panelTitle.textContent = "";
+        panelBody.innerHTML = `<div class="empty-state">Select a zone on the map.</div>`;
+        return;
+      }
+      if (panelEditing && editMode) {
+        renderPanelEditForm();
+      } else {
+        renderPanelReadOnly();
+      }
+    }
+
+    function renderPanelReadOnly() {
+      const zoneName = selectedKey;
+      const zoneMeta = getZoneMeta(zoneName);
+      const title = getZoneTitle(zoneName);
+      const note = getZoneNote(zoneName);
+      panelType.textContent = "Zone";
+      panelTitle.textContent = title;
+
+      const editBtn = editMode
+        ? `<button id="editPanelBtn" type="button" class="panel-edit-btn">Edit Details</button>`
+        : "";
+
+      panelBody.innerHTML = `
+        ${editBtn}
+        <div class="section-card">
+          <h3>Items</h3>
+          <ul>${(zoneItems[zoneName] || []).map((item) => `<li>${escapeHtml(item.label)}</li>`).join("")}</ul>
+        </div>
+        <div class="section-card">
+          <h3>Notes</h3>
+          <ul><li>${escapeHtml(note || "(No notes yet.)")}</li></ul>
+        </div>
+        ${zoneMeta.benches ? renderBenchSummary(zoneMeta.benches) : ""}
+      `;
+
+      document.getElementById("editPanelBtn")?.addEventListener("click", beginPanelEdit);
+    }
+
+    function beginPanelEdit() {
+      if (!editMode) return;
+      const zoneName = selectedKey;
+      if (!editorData.zones[zoneName]) return;
+      panelDraft = {
+        title: getZoneTitle(zoneName),
+        note: getZoneNote(zoneName),
+        items: (zoneItems[zoneName] || []).map((item) => ({
+          id: item.id,
+          label: item.label,
+          x: item.x,
+          y: item.y
+        }))
+      };
+      panelEditing = true;
+      renderPanel();
+    }
+
+    function renderPanelEditForm() {
+      if (!panelDraft) {
+        panelEditing = false;
+        renderPanel();
+        return;
+      }
+      const zoneName = selectedKey;
+      panelType.textContent = "Editing zone";
+      panelTitle.textContent = panelDraft.title || zoneName;
+
+      panelBody.innerHTML = `
+        <form class="panel-edit-form" id="panelEditForm" autocomplete="off">
+          <div class="section-card">
+            <h3>Zone Title</h3>
+            <div class="panel-section-padded">
+              <input id="panelTitleInput" class="panel-input" type="text" maxlength="80" />
+            </div>
+          </div>
+          <div class="section-card">
+            <h3>Notes</h3>
+            <div class="panel-section-padded">
+              <textarea id="panelNoteInput" class="panel-textarea" rows="4"></textarea>
+            </div>
+          </div>
+          <div class="section-card">
+            <h3>Items</h3>
+            <ul class="panel-item-list" id="panelItemList"></ul>
+            <button id="panelAddItemBtn" class="panel-add-btn" type="button">+ Add Item</button>
+          </div>
+          <div class="panel-actions">
+            <button id="panelCancelBtn" type="button">Cancel</button>
+            <button id="panelSaveBtn" class="panel-save-btn" type="submit">Save</button>
+          </div>
+        </form>
+      `;
+
+      const titleInput = document.getElementById("panelTitleInput");
+      const noteInput = document.getElementById("panelNoteInput");
+      const addBtn = document.getElementById("panelAddItemBtn");
+      const cancelBtn = document.getElementById("panelCancelBtn");
+      const form = document.getElementById("panelEditForm");
+
+      titleInput.value = panelDraft.title;
+      noteInput.value = panelDraft.note;
+
+      titleInput.addEventListener("input", (e) => { panelDraft.title = e.target.value; });
+      noteInput.addEventListener("input", (e) => { panelDraft.note = e.target.value; });
+
+      addBtn.addEventListener("click", () => {
+        panelDraft.items.push({
+          id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          label: "",
+          x: 14,
+          y: 14
+        });
+        renderPanelItemList();
+        const list = document.getElementById("panelItemList");
+        const last = list?.querySelector(".panel-item-row:last-child .panel-input");
+        last?.focus();
+      });
+
+      cancelBtn.addEventListener("click", cancelPanelEdit);
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        savePanelEdit();
+      });
+
+      renderPanelItemList();
+    }
+
+    function renderPanelItemList() {
+      const list = document.getElementById("panelItemList");
+      if (!list) return;
+      list.innerHTML = panelDraft.items.map((item, idx) => `
+        <li class="panel-item-row" data-index="${idx}">
+          <input type="text" class="panel-input" data-index="${idx}" value="${escapeHtml(item.label)}" placeholder="Item name" />
+          <button type="button" class="panel-item-delete" data-index="${idx}" aria-label="Delete item">-</button>
+        </li>
+      `).join("");
+
+      list.querySelectorAll(".panel-input").forEach((input) => {
+        input.addEventListener("input", (event) => {
+          const idx = Number(event.target.dataset.index);
+          if (Number.isFinite(idx) && panelDraft.items[idx]) {
+            panelDraft.items[idx].label = event.target.value;
+          }
+        });
+      });
+
+      list.querySelectorAll(".panel-item-delete").forEach((btn) => {
+        btn.addEventListener("click", async (event) => {
+          const idx = Number(event.currentTarget.dataset.index);
+          if (!Number.isFinite(idx) || !panelDraft.items[idx]) return;
+          const label = panelDraft.items[idx].label?.trim() || "this item";
+          const ok = await showConfirm({
+            title: "Delete item?",
+            message: `Delete "${label}"? This cannot be undone.`,
+            confirmLabel: "Delete"
+          });
+          if (!ok) return;
+          panelDraft.items.splice(idx, 1);
+          renderPanelItemList();
+        });
+      });
+    }
+
+    function cancelPanelEdit() {
+      panelEditing = false;
+      panelDraft = null;
+      renderPanel();
+    }
+
+    function savePanelEdit() {
+      if (!editMode || !panelEditing || !panelDraft || !selectedKey) return;
+      const zoneName = selectedKey;
+      const zoneData = editorData.zones[zoneName];
+      if (!zoneData) return;
+
+      const nextTitle = (panelDraft.title || "").trim();
+      if (!nextTitle) {
+        alert("Zone name cannot be empty. Please enter a title before saving.");
+        document.getElementById("panelTitleInput")?.focus();
+        return;
+      }
+
+      const cleanedItems = panelDraft.items
+        .map((item, idx) => ({
+          id: item.id || `custom-${Date.now()}-${idx}`,
+          label: (item.label || "").trim(),
+          x: Number.isFinite(item.x) ? item.x : 14,
+          y: Number.isFinite(item.y) ? item.y : 14
+        }))
+        .filter((item) => item.label.length > 0);
+
+      zoneData.title = nextTitle;
+      zoneData.note = panelDraft.note || "";
+      zoneData.items = cleanedItems.map((item, idx) => normalizeItem(zoneName, item, idx));
+
+      saveLabEditorData();
+      zoneLayout = getZoneLayoutFromEditor();
+      zoneItems = getZoneItemsFromEditor();
+
+      panelEditing = false;
+      panelDraft = null;
+
+      rerenderEditor();
+      showZone(zoneName);
+    }
+
+    function showBench(benchName) {
+      selectedKey = "BENCH-ZONE";
+      selectedBench = benchName;
+      selectedItemId = null;
+      panelEditing = false;
+      panelDraft = null;
+      setActive("BENCH-ZONE", benchName);
+      const bench = labData.zones["BENCH-ZONE"].benches[benchName];
+      panelType.textContent = "Bench inventory";
+      panelTitle.textContent = benchName;
+      panelBody.innerHTML = `
+        <div class="section-card">
+          <h3>Upper Cabinet</h3>
+          <div class="cabinet-grid">${renderCabinet(bench.upperCabinet)}</div>
+        </div>
+        <div class="section-card">
+          <h3>Lower Cabinet</h3>
+          <div class="cabinet-grid">${renderCabinet(bench.lowerCabinet)}</div>
+        </div>
+        <div class="tag-list">${flattenBench(bench).map((item) => `<span class="tag">${item}</span>`).join("")}</div>
+      `;
+    }
+
+    function showEquipment(item) {
+      setActive(item.zone);
+      panelType.textContent = "Equipment";
+      panelTitle.textContent = item.label;
+      panelBody.innerHTML = `
+        <div class="section-card">
+          <h3>Location</h3>
+          <ul><li>${item.zone}</li></ul>
+        </div>
+        <div class="section-card">
+          <h3>Notes</h3>
+          <ul><li>${item.sublabel ? item.sublabel : labData.zones[item.zone].note}</li></ul>
+        </div>
+      `;
+    }
+
+    function showItemDetail(zoneName, item) {
+      selectedKey = zoneName;
+      selectedBench = null;
+      selectedItemId = item.id;
+      panelEditing = false;
+      panelDraft = null;
+      setActive(zoneName);
+      document.querySelector(`[data-item-id="${item.id}"]`)?.classList.add("active");
+      panelType.textContent = "Item";
+      panelTitle.textContent = item.label;
+      const editHint = editMode
+        ? "Double-click this item on the map to rename it, drag it to reposition, or use the minus button to delete it."
+        : "View-only. Switch to Edit Mode to make changes.";
+      panelBody.innerHTML = `
+        <div class="section-card">
+          <h3>Location</h3>
+          <ul><li>${escapeHtml(getZoneTitle(zoneName))}</li></ul>
+        </div>
+        <div class="section-card">
+          <h3>Notes</h3>
+          <ul><li>${editHint}</li></ul>
+        </div>
+      `;
+    }
+
+    function renderCabinet(cabinet) {
+      return Object.entries(cabinet).map(([place, items]) => `
+        <div class="cabinet-box">
+          <strong>${place}</strong>
+          <p>${items.join(", ")}</p>
+        </div>
+      `).join("");
+    }
+
+    function renderBenchSummary(benches) {
+      if (!benches) return "";
+      return `
+        <div class="section-card">
+          <h3>Bench Quick View</h3>
+          <ul>
+            ${Object.keys(benches).map((bench) => `<li>${bench}: click the bench on the map to view upper and lower cabinets.</li>`).join("")}
+          </ul>
+        </div>
+      `;
+    }
+
+    function flattenBench(bench) {
+      return [
+        ...Object.values(bench.upperCabinet).flat(),
+        ...Object.values(bench.lowerCabinet).flat()
+      ];
+    }
+
+    function setActive(zoneName, benchName = null) {
+      document.querySelectorAll(".zone, .bench, .zone-item").forEach((element) => element.classList.remove("active"));
+      document.querySelector(`[data-zone="${zoneName}"]`)?.classList.add("active");
+      if (benchName) document.querySelector(`[data-bench="${benchName}"]`)?.classList.add("active");
+    }
+
+    function searchLab(query) {
+      const normalized = normalizeSearchText(query);
+      document.querySelectorAll(".highlight").forEach((el) => el.classList.remove("highlight"));
+      if (!normalized) return;
+
+      const matches = [];
+
+      Object.keys(editorData.zones).forEach((zoneName) => {
+        const zone = getZoneMeta(zoneName);
+        const zoneText = [
+          zoneName,
+          getZoneTitle(zoneName),
+          getZoneNote(zoneName),
+          ...(zoneItems[zoneName] || []).map((item) => item.label),
+          ...Object.entries(zone.benches || {}).flatMap(([benchName, bench]) => [benchName, ...flattenBench(bench)])
+        ].join(" ");
+
+        if (matchesSearch(zoneText, normalized)) {
+          matches.push({ type: "zone", name: zoneName });
+        }
+
+        if (zone.benches) {
+          Object.entries(zone.benches).forEach(([benchName, bench]) => {
+            const benchText = `${benchName} ${flattenBench(bench).join(" ")}`;
+            if (matchesSearch(benchText, normalized)) matches.push({ type: "bench", name: benchName });
+          });
+        }
+      });
+
+      Object.entries(zoneItems).forEach(([zoneName, items]) => {
+        items.forEach((item) => {
+          if (matchesSearch(item.label, normalized)) matches.push({ type: "item", id: item.id, zone: zoneName, item });
+        });
+      });
+
+      matches.forEach((match) => {
+        if (match.type === "zone") document.querySelector(`[data-zone="${match.name}"]`)?.classList.add("highlight");
+        if (match.type === "bench") document.querySelector(`[data-bench="${match.name}"]`)?.classList.add("highlight");
+        if (match.type === "item") document.querySelector(`[data-item-id="${match.id}"]`)?.classList.add("highlight");
+      });
+
+      const first = matches[0];
+      if (!first) {
+        panelType.textContent = "Search";
+        panelTitle.textContent = "No match";
+        panelBody.innerHTML = `<div class="empty-state">No item, bench, or inventory entry matched "${query}".</div>`;
+        return;
+      }
+
+      if (first.type === "bench") showBench(first.name);
+      if (first.type === "zone") showZone(first.name);
+      if (first.type === "item") showItemDetail(first.zone, first.item);
+
+      // Reapply highlights because showZone/showBench refreshes active states.
+      matches.forEach((match) => {
+        if (match.type === "zone") document.querySelector(`[data-zone="${match.name}"]`)?.classList.add("highlight");
+        if (match.type === "bench") document.querySelector(`[data-bench="${match.name}"]`)?.classList.add("highlight");
+        if (match.type === "item") document.querySelector(`[data-item-id="${match.id}"]`)?.classList.add("highlight");
+      });
+    }
+
+    function normalizeSearchText(text) {
+      return text.toLowerCase().replace(/[^a-z0-9-]+/g, " ").trim();
+    }
+
+    function matchesSearch(sourceText, normalizedQuery) {
+      const normalizedSource = normalizeSearchText(sourceText);
+      const queryTokens = normalizedQuery.split(/\s+/).filter(Boolean);
+      return normalizedSource.includes(normalizedQuery) || queryTokens.every((token) => normalizedSource.includes(token));
+    }
+
+    function addZone() {
+      if (!editMode) return;
+      const rawName = prompt("Enter a new ZONE name:");
+      if (!rawName || !rawName.trim()) return;
+
+      const zoneName = rawName.trim().toUpperCase().replace(/\s+/g, "-");
+      if (editorData.zones[zoneName]) {
+        alert("That ZONE already exists.");
+        return;
+      }
+
+      editorData.zones[zoneName] = {
+        x: 80,
+        y: 80,
+        width: 280,
+        height: 160,
+        title: zoneName,
+        note: "",
+        items: []
+      };
+      saveLabEditorData();
+      zoneLayout = getZoneLayoutFromEditor();
+      zoneItems = getZoneItemsFromEditor();
+      rerenderEditor();
+      showZone(zoneName);
+    }
+
+    async function deleteZone(zoneName) {
+      if (!editMode) return;
+      if (!editorData.zones[zoneName]) return;
+      const ok = await showConfirm({
+        title: "Delete zone?",
+        message: `This will permanently remove "${zoneName}" and all of its items. This cannot be undone.`,
+        confirmLabel: "Delete zone"
+      });
+      if (!ok) return;
+
+      delete editorData.zones[zoneName];
+      saveLabEditorData();
+      selectedKey = Object.keys(editorData.zones)[0] || "";
+      selectedBench = null;
+      zoneLayout = getZoneLayoutFromEditor();
+      zoneItems = getZoneItemsFromEditor();
+      rerenderEditor();
+      if (selectedKey) showZone(selectedKey);
+    }
+
+    function rerenderEditor() {
+      renderZones();
+      applyZoneLayout();
+      renderAllZoneItems();
+      renderLegend();
+      setupZoneResize();
+      setEditMode(editMode);
+      searchLab(searchInput.value);
+    }
+
+    function addZoneItem(zoneName) {
+      if (!editMode) return;
+      const item = {
+        id: `custom-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        label: "New item",
+        x: 14,
+        y: 14
+      };
+      zoneItems[zoneName] = [...(zoneItems[zoneName] || []), item];
+      syncEditorFromZoneItems(zoneItems);
+      renderZoneItems(zoneName);
+      const label = document.querySelector(`[data-item-id="${item.id}"] .item-label`);
+      if (label) startEditingItemLabel(zoneName, item.id, label);
+    }
+
+    async function deleteZoneItem(zoneName, itemId) {
+      if (!editMode) return;
+      const target = (zoneItems[zoneName] || []).find((entry) => entry.id === itemId);
+      const label = target?.label || "this item";
+      const ok = await showConfirm({
+        title: "Delete item?",
+        message: `Remove "${label}" from ${zoneName}? This cannot be undone.`,
+        confirmLabel: "Delete item"
+      });
+      if (!ok) return;
+
+      zoneItems[zoneName] = (zoneItems[zoneName] || []).filter((item) => item.id !== itemId);
+      syncEditorFromZoneItems(zoneItems);
+      renderZoneItems(zoneName);
+      showZone(zoneName);
+    }
+
+    function startEditingItemLabel(zoneName, itemId, labelEl) {
+      if (!editMode) return;
+      const originalText = labelEl.textContent.trim();
+      labelEl.contentEditable = "true";
+      labelEl.focus();
+      document.getSelection()?.selectAllChildren(labelEl);
+
+      function finishEdit(save) {
+        const nextText = labelEl.textContent.trim();
+        labelEl.contentEditable = "false";
+        labelEl.removeEventListener("keydown", onKeyDown);
+        labelEl.removeEventListener("blur", onBlur);
+
+        if (!save || !nextText) {
+          labelEl.textContent = originalText;
+          return;
+        }
+
+        const item = (zoneItems[zoneName] || []).find((candidate) => candidate.id === itemId);
+        if (!item) return;
+        item.label = nextText;
+        syncEditorFromZoneItems(zoneItems);
+        renderZoneItems(zoneName);
+        searchLab(searchInput.value);
+      }
+
+      function onKeyDown(event) {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          finishEdit(true);
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          finishEdit(false);
+        }
+      }
+
+      function onBlur() {
+        finishEdit(true);
+      }
+
+      labelEl.addEventListener("keydown", onKeyDown);
+      labelEl.addEventListener("blur", onBlur);
+    }
+
+    function resetLayoutToDefaults() {
+      if (!editMode) return;
+      editorData = normalizeEditorData(deepClone(DEFAULT_LAB_DATA));
+      saveLabEditorData();
+      if (!editorData.zones[selectedKey]) selectedKey = "BENCH-ZONE";
+      zoneLayout = getZoneLayoutFromEditor();
+      zoneItems = getZoneItemsFromEditor();
+      rerenderEditor();
+      showZone(selectedKey);
+    }
+
+    searchInput.addEventListener("input", (event) => searchLab(event.target.value));
+
+    clearSearch.addEventListener("click", () => {
+      searchInput.value = "";
+      document.querySelectorAll(".highlight").forEach((el) => el.classList.remove("highlight"));
+      selectedBench ? showBench(selectedBench) : showZone(selectedKey);
+    });
+
+    document.addEventListener("click", (event) => {
+      const addButton = event.target.closest(".add-item-btn");
+      if (!addButton) return;
+      if (!editMode) return;
+      event.stopPropagation();
+      const zoneName = addButton.closest(".zone")?.dataset.zoneId;
+      if (zoneName) addZoneItem(zoneName);
+    });
+
+    document.addEventListener("click", (event) => {
+      const deleteButton = event.target.closest(".delete-zone-btn");
+      if (!deleteButton) return;
+      if (!editMode) return;
+      event.stopPropagation();
+      const zoneName = deleteButton.closest(".zone")?.dataset.zoneId;
+      if (zoneName) deleteZone(zoneName);
+    });
+
+    function slugify(text) {
+      return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"']/g, (char) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "\"": "&quot;",
+        "'": "&#039;"
+      }[char]));
+    }
+
+    render();
+  </script>
+</body>
+</html>
